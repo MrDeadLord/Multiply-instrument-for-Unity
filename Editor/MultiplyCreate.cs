@@ -1,21 +1,44 @@
-﻿using UnityEditor;
+﻿///Made by https://github.com/MrDeadLord
+///Any questions/suggestions: https://stackoverflow.com/users/13863823/dead-lord
+///or here: https://www.facebook.com/Mr.D.Lord
+///
+///Feel free to use. Hope you'll enjoy it ^_^
+///
+///Here you van make fine randon rocks placing, bot spawnpoints or anything you like
+///
+///P.S. soon I'll add eng coments. sor :(
+///
+
+using UnityEditor;
 using UnityEngine;
 
 public class MultiplyCreate : EditorWindow
 {
     #region Переменные
-    [SerializeField] private GameObject gameObj;
+    /// <summary>
+    /// Умножаемый объект
+    /// </summary>
+    private GameObject gameObj;
+    /// <summary>
+    /// Кол-во умножаемых объектов
+    /// </summary>
     private int count;
-    private bool isAdvanced = false;
-    private string objName = "multiplied";
-    bool isGrouped;
-    string parrentsName = "Parrent";
     Vector3 startPosition;
     float spaceBetween;
     string[] directions = { "X", "-X", "Y", "-Y", "Z", "-Z" };
     int directionIndex;
-    private Vector3 spawnPosition;    
+    private Vector3 spawnPosition;
     private Quaternion startRotation;
+
+    //Доп настройки
+    private bool isAdvanced = false;
+    private string objName = "multiplied";  //Стандартное имя
+    bool isGrouped;
+    string parentsName = "Parrent"; //Стандартное имя родителя
+    
+    /// <summary>
+    /// На сколько будет поворачиватся каждый последующий объект
+    /// </summary>
     private Quaternion nextRotation;
 
     private Vector3 startRot, nextRot;  //Временные переменные
@@ -23,13 +46,14 @@ public class MultiplyCreate : EditorWindow
 
     [MenuItem("DeadLords/Create Multiply Objects %#d", false, 1)]
     public static void MultiplyWindow()
-    {        
+    {
         EditorWindow.GetWindow(typeof(MultiplyCreate));
     }
 
     private void OnGUI()
     {
         GUILayout.Label("Настройки создания объектов", EditorStyles.boldLabel);
+        GUILayout.Space(10);
 
         if (Selection.activeGameObject)
         {
@@ -39,7 +63,7 @@ public class MultiplyCreate : EditorWindow
             startRot = gameObj.transform.rotation.eulerAngles;
             startRotation = gameObj.transform.rotation; //Поворот записывается в поле стартового поворота
         }
-            
+
 
         gameObj = EditorGUILayout.ObjectField("Объект умножения", gameObj, typeof(GameObject), true) as GameObject;
 
@@ -49,13 +73,14 @@ public class MultiplyCreate : EditorWindow
 
         directionIndex = EditorGUILayout.Popup("Направление умножения", directionIndex, directions);
 
+        GUILayout.Space(5);
         startPosition = EditorGUILayout.Vector3Field("Расположение первого объекта", startPosition);
 
         startRot = EditorGUILayout.Vector3Field("Поворот первого объекта", startRot);
         startRotation = Quaternion.Euler(startRot);
 
+        GUILayout.Space(5);
         nextRot = EditorGUILayout.Vector3Field("Поворот следующих объектов", nextRot);
-        nextRotation = Quaternion.Euler(nextRot);
 
         #region Доп. параметры
         GUILayout.Space(10);
@@ -63,8 +88,9 @@ public class MultiplyCreate : EditorWindow
 
         objName = EditorGUILayout.TextField("Имя объектов", objName);
 
+        GUILayout.Space(5);
         isGrouped = EditorGUILayout.BeginToggleGroup("Группировать под один объект", isGrouped);
-        parrentsName = EditorGUILayout.TextField("Имя родительского объекта", parrentsName);
+        parentsName = EditorGUILayout.TextField("Имя родительского объекта", parentsName);
         EditorGUILayout.EndToggleGroup();
 
         EditorGUILayout.EndToggleGroup();
@@ -72,257 +98,153 @@ public class MultiplyCreate : EditorWindow
 
         if (GUILayout.Button("Создать объекты"))
         {
-            CreateObject();
+            if (isGrouped)
+            {
+                var parent = new GameObject(parentsName);
+                parent.transform.position = startPosition;
+                parent.transform.rotation = startRotation;
+
+                CreateObject(parent.transform);
+            }
+            else
+                CreateObject(null);
         }
     }
 
     /// <summary>
     /// Создание объектов в зависимости от выбранных параметров
     /// </summary>
-    private void CreateObject()
+    /// <param name="parent">Объект под который нужно объеденить. Если не нужно - null</param>
+    private void CreateObject(Transform parent)
     {
-        if (gameObj && isGrouped)
+        switch (directionIndex)
         {
-            GameObject parrent = new GameObject(parrentsName);
-
-            switch (directionIndex)
-            {
-                //-x
-                case 1:
-                    for (int i = 0; i < count; i++)
+            //+x Ибо по умолчанию это именно +x
+            default:
+                for (int i = 0; i < count; i++)
+                {
+                    if (i == 0)
                     {
-                        if (i == 0)
-                        {
-                            GameObject temp = Instantiate(gameObj, startPosition, startRotation, parrent.transform);
-                            temp.name = objName;
-                        }
-                        else
-                        {
-                            spawnPosition -= Vector3.right * spaceBetween;
-
-                            GameObject temp = Instantiate(gameObj, spawnPosition, nextRotation, parrent.transform);
-                            temp.name = objName + "(" + i + ")";
-                        }
+                        GameObject temp = Instantiate(gameObj, startPosition, startRotation, parent);
+                        temp.name = objName;
+                        spawnPosition = startPosition;
                     }
-                    break;
-                //+y
-                case 2:
-                    for (int i = 0; i < count; i++)
+                    else
                     {
-                        if (i == 0)
-                        {
-                            GameObject temp = Instantiate(gameObj, startPosition, Quaternion.identity, parrent.transform);
-                            temp.name = objName;
-                        }
-                        else
-                        {
-                            spawnPosition += Vector3.up * spaceBetween;
+                        spawnPosition.x += spaceBetween;
+                        nextRot *= i;
+                        nextRotation = Quaternion.Euler(nextRot);
 
-                            GameObject temp = Instantiate(gameObj, spawnPosition, Quaternion.identity, parrent.transform);
-                            temp.name = objName + "(" + i + ")";
-                        }
+                        GameObject temp = Instantiate(gameObj, spawnPosition, nextRotation, parent);
+                        temp.name = objName + "(" + i + ")";
                     }
-                    break;
-                //-y
-                case 3:
-                    for (int i = 0; i < count; i++)
+                }
+                break;
+            //-x
+            case 1:
+                for (int i = 0; i < count; i++)
+                {
+                    if (i == 0)
                     {
-                        if (i == 0)
-                        {
-                            GameObject temp = Instantiate(gameObj, startPosition, Quaternion.identity, parrent.transform);
-                            temp.name = objName;
-                        }
-                        else
-                        {
-                            spawnPosition -= Vector3.up * spaceBetween;
-
-                            GameObject temp = Instantiate(gameObj, spawnPosition, Quaternion.identity, parrent.transform);
-                            temp.name = objName + "(" + i + ")";
-                        }
+                        GameObject temp = Instantiate(gameObj, startPosition, startRotation, parent);
+                        temp.name = objName;
+                        spawnPosition = startPosition;
                     }
-                    break;
-                //+z
-                case 4:
-                    for (int i = 0; i < count; i++)
+                    else
                     {
-                        if (i == 0)
-                        {
-                            GameObject temp = Instantiate(gameObj, startPosition, Quaternion.identity, parrent.transform);
-                            temp.name = objName;
-                        }
-                        else
-                        {
-                            spawnPosition += Vector3.forward * spaceBetween;
+                        spawnPosition.x -= spaceBetween;
+                        nextRot *= i;
+                        nextRotation = Quaternion.Euler(nextRot);
 
-                            GameObject temp = Instantiate(gameObj, spawnPosition, Quaternion.identity, parrent.transform);
-                            temp.name = objName + "(" + i + ")";
-                        }
+                        GameObject temp = Instantiate(gameObj, spawnPosition, nextRotation, parent);
+                        temp.name = objName + "(" + i + ")";
                     }
-                    break;
-                //+z
-                case 5:
-                    for (int i = 0; i < count; i++)
+                }
+                break;
+            //+y
+            case 2:
+                for (int i = 0; i < count; i++)
+                {
+                    if (i == 0)
                     {
-                        if (i == 0)
-                        {
-                            GameObject temp = Instantiate(gameObj, startPosition, Quaternion.identity, parrent.transform);
-                            temp.name = objName;
-                        }
-                        else
-                        {
-                            spawnPosition -= Vector3.forward * spaceBetween;
-
-                            GameObject temp = Instantiate(gameObj, spawnPosition, Quaternion.identity, parrent.transform);
-                            temp.name = objName + "(" + i + ")";
-                        }
+                        GameObject temp = Instantiate(gameObj, startPosition, startRotation, parent);
+                        temp.name = objName;
+                        spawnPosition = startPosition;
                     }
-                    break;
-                //+x Ибо по умолчанию это именно +x
-                default:
-                    for (int i = 0; i < count; i++)
+                    else
                     {
-                        if (i == 0)
-                        {
-                            GameObject temp = Instantiate(gameObj, startPosition, Quaternion.identity, parrent.transform);
-                            temp.name = objName;
-                        }
-                        else
-                        {
-                            spawnPosition += Vector3.right * spaceBetween;
+                        spawnPosition.y += spaceBetween;
+                        nextRot *= i;
+                        nextRotation = Quaternion.Euler(nextRot);
 
-                            GameObject temp = Instantiate(gameObj, spawnPosition, Quaternion.identity, parrent.transform);
-                            temp.name = objName + "(" + i + ")";
-                        }
+                        GameObject temp = Instantiate(gameObj, spawnPosition, nextRotation, parent);
+                        temp.name = objName + "(" + i + ")";
                     }
-                    break;
-            }
-        }
-        else if (gameObj)
-        {
-            switch (directionIndex)
-            {
-                //-x
-                case 1:
-                    for (int i = 0; i < count; i++)
+                }
+                break;
+            //-y
+            case 3:
+                for (int i = 0; i < count; i++)
+                {
+                    if (i == 0)
                     {
-                        if (i == 0)
-                        {
-                            GameObject temp = Instantiate(gameObj, startPosition, startRotation);
-                            temp.name = objName;
-                        }
-                        else
-                        {
-                            spawnPosition -= Vector3.right * spaceBetween;
-                            nextRot = nextRot * i + startRot;
-                            nextRotation = Quaternion.Euler(nextRot);
-                            
-                            GameObject temp = Instantiate(gameObj, spawnPosition, nextRotation);
-                            temp.name = objName + "(" + i + ")";
-                        }
+                        GameObject temp = Instantiate(gameObj, startPosition, startRotation, parent);
+                        temp.name = objName;
+                        spawnPosition = startPosition;
                     }
-                    break;
-                //+y
-                case 2:
-                    for (int i = 0; i < count; i++)
+                    else
                     {
-                        if (i == 0)
-                        {
-                            GameObject temp = Instantiate(gameObj, startPosition, startRotation);
-                            temp.name = objName;
-                        }
-                        else
-                        {
-                            spawnPosition -= Vector3.right * spaceBetween;
-                            nextRot = nextRot * i + startRot;
-                            nextRotation = Quaternion.Euler(nextRot);
+                        spawnPosition.y -= spaceBetween;
+                        nextRot *= i;
+                        nextRotation = Quaternion.Euler(nextRot);
 
-                            GameObject temp = Instantiate(gameObj, spawnPosition, nextRotation);
-                            temp.name = objName + "(" + i + ")";
-                        }
+                        GameObject temp = Instantiate(gameObj, spawnPosition, nextRotation, parent);
+                        temp.name = objName + "(" + i + ")";
                     }
-                    break;
-                //-y
-                case 3:
-                    for (int i = 0; i < count; i++)
+                }
+                break;
+            //+z
+            case 4:
+                for (int i = 0; i < count; i++)
+                {
+                    if (i == 0)
                     {
-                        if (i == 0)
-                        {
-                            GameObject temp = Instantiate(gameObj, startPosition, startRotation);
-                            temp.name = objName;
-                        }
-                        else
-                        {
-                            spawnPosition -= Vector3.right * spaceBetween;
-                            nextRot = nextRot * i + startRot;
-                            nextRotation = Quaternion.Euler(nextRot);
-
-                            GameObject temp = Instantiate(gameObj, spawnPosition, nextRotation);
-                            temp.name = objName + "(" + i + ")";
-                        }
+                        GameObject temp = Instantiate(gameObj, startPosition, startRotation, parent);
+                        temp.name = objName;
+                        spawnPosition = startPosition;
                     }
-                    break;
-                //+z
-                case 4:
-                    for (int i = 0; i < count; i++)
+                    else
                     {
-                        if (i == 0)
-                        {
-                            GameObject temp = Instantiate(gameObj, startPosition, startRotation);
-                            temp.name = objName;
-                        }
-                        else
-                        {
-                            spawnPosition -= Vector3.right * spaceBetween;
-                            nextRot = nextRot * i + startRot;
-                            nextRotation = Quaternion.Euler(nextRot);
+                        spawnPosition.z += spaceBetween;
+                        nextRot *= i;
+                        nextRotation = Quaternion.Euler(nextRot);
 
-                            GameObject temp = Instantiate(gameObj, spawnPosition, nextRotation);
-                            temp.name = objName + "(" + i + ")";
-                        }
+                        GameObject temp = Instantiate(gameObj, spawnPosition, nextRotation, parent);
+                        temp.name = objName + "(" + i + ")";
                     }
-                    break;
-                //+z
-                case 5:
-                    for (int i = 0; i < count; i++)
+                }
+                break;
+            //-z
+            case 5:
+                for (int i = 0; i < count; i++)
+                {
+                    if (i == 0)
                     {
-                        if (i == 0)
-                        {
-                            GameObject temp = Instantiate(gameObj, startPosition, startRotation);
-                            temp.name = objName;
-                        }
-                        else
-                        {
-                            spawnPosition -= Vector3.right * spaceBetween;
-                            nextRot = nextRot * i + startRot;
-                            nextRotation = Quaternion.Euler(nextRot);
-
-                            GameObject temp = Instantiate(gameObj, spawnPosition, nextRotation);
-                            temp.name = objName + "(" + i + ")";
-                        }
+                        GameObject temp = Instantiate(gameObj, startPosition, startRotation, parent);
+                        temp.name = objName;
+                        spawnPosition = startPosition;
                     }
-                    break;
-                //+x Ибо по умолчанию это именно +x
-                default:
-                    for (int i = 0; i < count; i++)
+                    else
                     {
-                        if (i == 0)
-                        {
-                            GameObject temp = Instantiate(gameObj, startPosition, startRotation);
-                            temp.name = objName;
-                        }
-                        else
-                        {
-                            spawnPosition -= Vector3.right * spaceBetween;
-                            nextRot = nextRot * i + startRot;
-                            nextRotation = Quaternion.Euler(nextRot);
+                        spawnPosition.z -= spaceBetween;
+                        nextRot *= i;
+                        nextRotation = Quaternion.Euler(nextRot);
 
-                            GameObject temp = Instantiate(gameObj, spawnPosition, nextRotation);
-                            temp.name = objName + "(" + i + ")";
-                        }
+                        GameObject temp = Instantiate(gameObj, spawnPosition, nextRotation, parent);
+                        temp.name = objName + "(" + i + ")";
                     }
-                    break;
-            }
-
-        }
+                }
+                break;
+        }        
     }
 }
